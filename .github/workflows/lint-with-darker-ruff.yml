@@ -14,7 +14,7 @@
         - name: Checkout reusable actions repo
           uses: actions/checkout@v3
           with:
-            repository: solvers-camp/.github
+            repository: Thilaga-26/.github
             path: reusable-actions
             # ref: current
             ref: main
