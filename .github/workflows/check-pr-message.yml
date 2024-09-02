@@ -1,0 +1,51 @@
+---
+  name: Check pull request message format
+  
+  on:
+    workflow_call:
+  
+  jobs:
+    check-pr-title:
+      name: Check pull request title
+      runs-on: ubuntu-latest
+      permissions:
+        pull-requests: write
+        contents: read
+      steps:
+        - uses: actions/checkout@v3
+          timeout-minutes: 2
+    
+        - name: Checkout reusable actions repo
+          uses: actions/checkout@v3
+          with:
+            # repository: vyos/.github
+            repository: solvers-camp/.github
+            path: reusable-actions
+  
+        - name: Install the requests library
+          run: pip3 install requests
+  
+        - name: Check the PR title
+          timeout-minutes: 2
+          id: check_pr_title
+          run: |
+            output=$(./reusable-actions/scripts/check-pr-title-and-commit-messages.py '${{ github.event.pull_request.url }}' 2>&1 || true)
+            if [ -n "$output" ]; then
+              echo "$output"
+              echo "error_message=${output//$'\n'/. }" >> $GITHUB_ENV         
+              exit 1
+            else
+              #echo "error_message=" >> $GITHUB_ENV
+              echo "error_message=No issues in PR Title / Commit Title" >> $GITHUB_ENV
+            fi
+          shell: bash
+
+        - name: Add PR comment
+          if: always()
+          uses: mshick/add-pr-comment@v2
+          with:
+            message: |-
+              ${{ env.error_message == 'No issues in PR Title / Commit Title' && '👍' || '❌' }}
+              ${{ env.error_message }}
+            message-id: "TITLE_COMMIT_VALIDATION"
+            allow-repeats: false

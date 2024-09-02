@@ -1,0 +1,72 @@
+---
+  name: Darker-Ruff Lint
+  
+  on:
+    workflow_call:
+  
+  jobs:
+    darker-ruff-lint:
+      runs-on: ubuntu-latest
+      permissions:
+        pull-requests: write
+        contents: read
+      steps:
+        - name: Checkout reusable actions repo
+          uses: actions/checkout@v3
+          with:
+            repository: solvers-camp/.github
+            path: reusable-actions
+            # ref: current
+            ref: main
+  
+        - name: Checkout head
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0
+            fetch-tags: true
+            ref: ${{ github.event.pull_request.head.ref }}
+            repository: ${{ github.event.pull_request.head.repo.full_name }}
+            path: repo
+  
+        - name: Fetch base
+          run: |
+            cd repo
+            git fetch https://github.com/${{ github.event.pull_request.base.repo.full_name }} ${{ github.event.pull_request.base.ref }}:refs/remotes/origin/base
+  
+        - name: Setup python
+          uses: actions/setup-python@v5
+          with:
+            python-version: '3.11' 
+  
+        - name: Install darker ruff 
+          run: |
+            pip install git+https://github.com/akaihola/darker.git@master ruff>=0.0.292
+  
+        - name: Analyze Code
+          run: |
+            cd repo
+            cp ../reusable-actions/.github/ruff.toml .
+            darker -r origin/base --check --diff --lint "ruff check" --color .
+
+
+        #     set +e
+        #     output=$(darker -r origin/base --check --diff --lint "ruff check" --config ../reusable-actions/ruff.toml --color .)
+        #     exit_code=$?
+        #     set -e
+        #     echo "$output"
+        #     run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        #     message=":white_check_mark: No issues found in *Darker-Ruff* check."
+        #     if [[ $exit_code -ne 0 ]]; then
+        #       message=":x: Issues found in *Darker-Ruff* check. "
+        #     fi
+        #     echo "WORKFLOW_MESSAGE=${message}. Please refer the [workflow run]($run_url)" >> $GITHUB_ENV
+        #     exit $exit_code
+            
+        # - name: Add PR comment
+        #   if: ${{ always() && env.WORKFLOW_MESSAGE != '' }}
+        #   uses: mshick/add-pr-comment@v2
+        #   with:
+        #     message: |-
+        #       ${{ env.WORKFLOW_MESSAGE }}
+        #     message-id: "DARKER_LINT_VALIDATION"
+        #     allow-repeats: false

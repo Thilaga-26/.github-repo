@@ -1,0 +1,43 @@
+name: Check for codeowners existence
+
+on:
+  workflow_call:
+
+jobs:
+  check-for-codeowners_existence:
+    name: Check  codeowners file existence
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check codeowners existence in current repository
+        id: check_codeowneer_existence_current_repo
+        run: |
+          CODEOWNERS_FILE_PATH="CODEOWNERS"
+          if [[ ! -f "$CODEOWNERS_FILE_PATH" ]]; then
+            echo "CODEOWNERS file does not exist in current repository - ${{ github.repository }}. Action needed"
+            echo "CODEOWNERS_STATUS=CODEOWNERS File Not Found. Action Needed" >> $GITHUB_ENV
+            exit 1
+          else
+            echo "CODEOWNERS file exists in current repository - ${{ github.repository }}. No action needed"
+            echo "CODEOWNERS_STATUS=CODEOWNERS File Exists" >> $GITHUB_ENV
+          fi
+        shell: bash
+
+      - name: Add PR comment in current repository
+        if: always()
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |-
+            ${{ env.CODEOWNERS_STATUS == 'CODEOWNERS File Not Found. Action Needed' && '❌' || '👍' }}
+            ${{ env.CODEOWNERS_STATUS }}
+          message-id: "CODEOWNERS_VALIDATION"
+          allow-repeats: false
